@@ -66,6 +66,10 @@
 	margin: -9px 0 0 -9px;
 }
 
+.icon-loading-download:after{
+	margin: -9px -19px;
+}
+
 /* Css replaced elements don't have ::after nor ::before */
 img.icon-loading, object.icon-loading, video.icon-loading, button.icon-loading, textarea.icon-loading, input.icon-loading, select.icon-loading {
 	background-image: url("../img/loading.gif");
