@@ -64,7 +64,7 @@ class OC_Files {
 	}
 
 	/**
-+	 * @param View $view
+	 * @param View $view
 	 * @param string $filename
 	 * @param string $name
 	 * @param array $rangeArray ('from'=>int,'to'=>int), ...
