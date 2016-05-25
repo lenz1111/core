@@ -169,6 +169,21 @@ OCA.Sharing.PublicApp = {
 				return OC.generateUrl('/s/' + token + '/download') + '?' + OC.buildQueryString(params);
 			};
 
+			this.fileList.getDownloadPreviewUrl = function (filename, dir) {
+				var path = dir || this.getCurrentDirectory();
+				if (_.isArray(filename)) {
+					filename = JSON.stringify(filename);
+				}
+				var params = {
+					path: path,
+					preview: 1
+				};
+				if (filename) {
+					params.files = filename;
+				}
+				return OC.generateUrl('/s/' + token + '/download') + '?' + OC.buildQueryString(params);
+			};
+
 			this.fileList.getAjaxUrl = function (action, params) {
 				params = params || {};
 				params.t = token;

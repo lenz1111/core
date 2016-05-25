@@ -64,16 +64,17 @@ class OC_Files {
 	}
 
 	/**
++	 * @param View $view
 	 * @param string $filename
 	 * @param string $name
 	 * @param array $rangeArray ('from'=>int,'to'=>int), ...
 	 */
-	private static function sendHeaders($filename, $name, array $rangeArray) {
+	private static function sendHeaders($view, $filename, $name, array $rangeArray) {
 		OC_Response::setContentDispositionHeader($name, 'attachment');
 		header('Content-Transfer-Encoding: binary', true);
 		OC_Response::disableCaching();
-		$fileSize = \OC\Files\Filesystem::filesize($filename);
-		$type = \OC::$server->getMimeTypeDetector()->getSecureMimeType(\OC\Files\Filesystem::getMimeType($filename));
+		$fileSize = $view->filesize($filename);
+		$type = \OC::$server->getMimeTypeDetector()->getSecureMimeType($view->getMimeType($filename));
 		if ($fileSize > -1) {
 			if (!empty($rangeArray)) {
 			    header('HTTP/1.1 206 Partial Content', true);
@@ -238,13 +239,15 @@ class OC_Files {
 	}
 
 	/**
+	 * return the content of a single file
+	 * 
 	 * @param View $view
 	 * @param string $name
 	 * @param string $dir
 	 * @param array $params ; 'head' boolean to only send header of the request ; 'range' http range header
 	 */
-	private static function getSingleFile($view, $dir, $name, $params) {
-		$filename = $dir . '/' . $name;
+	public static function getSingleFile($view, $dir, $name, $params) {
+		$filename = ($dir == '' ? '' : $dir . '/') . $name;
 		OC_Util::obEnd();
 		$view->lockFile($filename, ILockingProvider::LOCK_SHARED);
 		
@@ -255,9 +258,9 @@ class OC_Files {
 								 \OC\Files\Filesystem::filesize($filename));
 		}
 		
-		if (\OC\Files\Filesystem::isReadable($filename)) {
-			self::sendHeaders($filename, $name, $rangeArray);
-		} elseif (!\OC\Files\Filesystem::file_exists($filename)) {
+		if ($view->isReadable($filename)) {
+			self::sendHeaders($view, $filename, $name, $rangeArray);
+		} elseif (!$view->file_exists($filename)) {
 			header("HTTP/1.0 404 Not Found");
 			$tmpl = new OC_Template('', '404', 'guest');
 			$tmpl->printPage();

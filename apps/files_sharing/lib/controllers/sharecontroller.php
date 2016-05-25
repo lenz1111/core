@@ -350,6 +350,11 @@ class ShareController extends Controller {
 		$shareTmpl['previewMaxX'] = $this->config->getSystemValue('preview_max_x', 1024);
 		$shareTmpl['previewMaxY'] = $this->config->getSystemValue('preview_max_y', 1024);
 
+		if ($shareTmpl['previewEnabled'] && substr($shareTmpl['mimetype'], 0, strpos($shareTmpl['mimetype'], '/')) == 'video') {
+			$shareTmpl['videoPreviewURL'] = $this->urlGenerator->linkToRouteAbsolute('files_sharing.sharecontroller.downloadShare',
+												 array('token' => $token, 'preview' => true));
+		}
+
 		$csp = new OCP\AppFramework\Http\ContentSecurityPolicy();
 		$csp->addAllowedFrameDomain('\'self\'');
 		$response = new TemplateResponse($this->appName, 'public', $shareTmpl, 'base');
@@ -358,6 +363,22 @@ class ShareController extends Controller {
 		$this->emitAccessShareHook($share);
 
 		return $response;
+	}
+
+	/**
+	 * @param File $node
+	 * @return string filename
+	 */
+	private function getDownloadPreviewFile($node) {
+
+		if ($node instanceof \OCP\Files\File) {
+			if ($this->config->getSystemValue('enable_movie_transcode', false) &&
+			    substr($node->getMimeType(), 0, strpos($node->getMimeType(), '/')) == 'video') {
+			    return \OC\Preview::getMovieThumbnailFilename();
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -493,6 +514,23 @@ class ShareController extends Controller {
 		 */
 		if (isset($_SERVER['HTTP_RANGE'])) {
 			$server_params['range'] = $this->request->getHeader('Range');
+		}
+
+		// preview of 'download' file
+		if (isset($_GET['preview']) && (!is_array($files_list) || count($files_list) == 1)) {
+
+			if (is_array($files_list)) { $pnode = $node->get($files_list[0]); }
+			else { $pnode = $share->getNode(); }
+
+			$view = new \OC\Files\View('/'.$share->getShareOwner().'/'.\OC\Preview::getThumbnailsFolder().'/'.$pnode->getId());
+			$thumbfile = $this->getDownloadPreviewFile($pnode);
+
+			if (!is_null($thumbfile) && !is_null($view) && $view->isReadable($thumbfile)) {
+			    // FIXME: The exit is required here because otherwise the AppFramework is trying to add headers as well
+			    // after dispatching the request which results in a "Cannot modify header information" notice.
+			    OC_Files::getSingleFile($view, '', $thumbfile, $server_params);
+			    exit();
+			}
 		}
 
 		// download selected files

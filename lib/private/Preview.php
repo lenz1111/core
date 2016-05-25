@@ -12,6 +12,7 @@
  * @author Roeland Jago Douma <rullzer@owncloud.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Tobias Kaminsky <tobias@kaminsky.me>
+ * @author Piotr Filiciak <piotr@filiciak.pl>
  *
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  * @license AGPL-3.0
@@ -38,6 +39,9 @@ use OCP\Files\NotFoundException;
 class Preview {
 	//the thumbnail folder
 	const THUMBNAILS_FOLDER = 'thumbnails';
+
+	//movie thumbnail filename
+	const MOVIE_THUMBNAIL_FILE = 'preview.mp4';
 
 	const MODE_FILL = 'fill';
 	const MODE_COVER = 'cover';
@@ -186,8 +190,17 @@ class Preview {
 	 *
 	 * @return string
 	 */
-	public function getThumbnailsFolder() {
+	public static function getThumbnailsFolder() {
 		return self::THUMBNAILS_FOLDER;
+	}
+
+	/**
+	 * returns the name of the movie thumbnail file
+	 *
+	 * @return string
+	 */
+	public static function getMovieThumbnailFilename() {
+		return self::MOVIE_THUMBNAIL_FILE;
 	}
 
 	/**
@@ -1093,7 +1106,7 @@ class Preview {
 	 * @return string
 	 */
 	private function getPreviewPath($fileId) {
-		return $this->getThumbnailsFolder() . '/' . $fileId . '/';
+		return self::getThumbnailsFolder() . '/' . $fileId . '/';
 	}
 
 	/**
@@ -1143,8 +1156,8 @@ class Preview {
 				$this->preview = $preview;
 				$previewPath = $this->getPreviewPath($fileId);
 
-				if ($this->userView->is_dir($this->getThumbnailsFolder() . '/') === false) {
-					$this->userView->mkdir($this->getThumbnailsFolder() . '/');
+				if ($this->userView->is_dir(self::getThumbnailsFolder() . '/') === false) {
+					$this->userView->mkdir(self::getThumbnailsFolder() . '/');
 				}
 
 				if ($this->userView->is_dir($previewPath) === false) {
@@ -1153,6 +1166,17 @@ class Preview {
 
 				// This stores our large preview so that it can be used in subsequent resizing requests
 				$this->storeMaxPreview($previewPath);
+
+				// Create movie thumbnail in the background
+				if ($provider instanceof \OC\Preview\Movie &&
+				    \OC::$server->getConfig()->getSystemValue('enable_movie_transcode', false)) {
+
+				    $absPath = $this->fileView->getLocalFile($file);
+				    $dstPath = $this->userView->getLocalFile($previewPath).'/'.self::getMovieThumbnailFilename();
+
+				    $provider->generateMoviePreview($this->configMaxWidth, $this->configMaxHeight, 
+								    $absPath, $dstPath);
+				}
 
 				break 2;
 			}

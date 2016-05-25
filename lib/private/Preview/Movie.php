@@ -5,6 +5,7 @@
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Olivier Paroz <github@oparoz.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Piotr Filiciak <piotr@filiciak.pl>
  *
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  * @license AGPL-3.0
@@ -109,5 +110,42 @@ class Movie extends Provider {
 		}
 		unlink($tmpPath);
 		return false;
+	}
+
+	/**
+	 * @param int $maxX
+	 * @param int $maxY
+	 * @param string $absPath
+	 * @param string $dstPath
+	 * @return bool
+	 */
+	public function generateMoviePreview($maxX, $maxY, $absPath, $dstPath) {
+		$tmpPath = \OC::$server->getTempManager()->getTemporaryFile();
+
+		// some codecs requires both the width and height to be divisible by 2
+		$maxX = $maxX & ~1;
+		$maxY = $maxY & ~1;
+
+		if (self::$avconvBinary) {
+			$cmd = self::$avconvBinary." -y -i ".escapeshellarg($absPath).
+			       " -vf scale=\"w='gt(a,$maxX/$maxY)*$maxX+not(gt(a,$maxX/$maxY))*ceil(iw/ih*$maxY/2)*2':".
+			       "h='gt(a,$maxX/$maxY)*ceil(ih/iw*$maxX/2)*2+not(gt(a,$maxX/$maxY))*$maxY'\"".
+			       " -strict -2 -movflags faststart -f mp4 ".
+			       escapeshellarg($tmpPath)." >/dev/null 2>&1 ".
+			       "&& mv ".escapeshellarg($tmpPath)." ".escapeshellarg($dstPath)." >/dev/null 2>&1 &";
+		} elseif (self::$ffmpegBinary) {
+			$cmd = self::$ffmpegBinary." -y -i ".escapeshellarg($absPath).
+			       " -vf scale=\"'if(gt(a,$maxX/$maxY),$maxX,-2)':".
+			    		    "'if(gt(a,$maxX/$maxY),-2,$maxY)'\"".
+			       " -strict -2 -movflags faststart -f mp4 ".
+			       escapeshellarg($tmpPath)." >/dev/null 2>&1 ".
+			       "&& mv ".escapeshellarg($tmpPath)." ".escapeshellarg($dstPath)." >/dev/null 2>&1 &";
+		}
+		else {
+		    return false;
+		}
+
+		exec($cmd);
+		return true;
 	}
 }
